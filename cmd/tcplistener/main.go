@@ -29,7 +29,7 @@ func main() {
 				fmt.Println(line)
 			}
 			c.Close()
-			fmt.Println("Connection to ", conn.RemoteAddr(), " Closed!")
+			fmt.Println("Connection to", conn.RemoteAddr(), "Closed!")
 		}(conn)
 
 	}
