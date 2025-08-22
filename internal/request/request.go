@@ -2,6 +2,7 @@ package request
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"regexp"
@@ -9,6 +10,8 @@ import (
 
 type Request struct {
 	RequestLine RequestLine
+
+	state requestState
 }
 
 type RequestLine struct {
@@ -17,30 +20,84 @@ type RequestLine struct {
 	Method        string
 }
 
+type requestState int
+
+const (
+	requestStateInitialised requestState = iota
+	requestStateDone
+)
+
 const crlf = "\r\n"
+const bufferSize = 8
 
 func RequestFromReader(reader io.Reader) (*Request, error) {
-	b, err := io.ReadAll(reader)
-	if err != nil {
-		return &Request{}, err
+	buf := make([]byte, bufferSize)
+	readToIndex := 0
+	req := &Request{
+		state: requestStateInitialised,
 	}
-	requestLine, err := parseRequestLine(b)
-	if err != nil {
-		return &Request{}, err
+	for req.state != requestStateDone {
+		if readToIndex >= len(buf) {
+			newBuf := make([]byte, len(buf)*2)
+			copy(newBuf, buf)
+			buf = newBuf
+		}
+		numBytesRead, err := reader.Read(buf[readToIndex:])
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				req.state = requestStateDone
+				break
+			}
+			return nil, err
+		}
+		readToIndex += numBytesRead
+
+		numBytesParsed, err := req.parse(buf[:readToIndex])
+		if err != nil {
+			return nil, err
+		}
+
+		copy(buf, buf[numBytesParsed:])
+		readToIndex -= numBytesParsed
 	}
-	request := &Request{
-		RequestLine: *requestLine,
-	}
-	return request, nil
+
+	return req, nil
 }
 
-func parseRequestLine(b []byte) (*RequestLine, error) {
+func (r *Request) parse(data []byte) (int, error) {
+	switch r.state {
+	case requestStateInitialised:
+		requestLine, n, err := parseRequestLine(data)
+		if err != nil {
+			return 0, err
+		}
+		if n == 0 {
+			return 0, nil
+		}
+		r.RequestLine = *requestLine
+		r.state = requestStateDone
+		return n, nil
+	case requestStateDone:
+		return 0, fmt.Errorf("error: trying to read data in a done state")
+	default:
+		return 0, fmt.Errorf("unkown state")
+	}
+}
+
+func parseRequestLine(b []byte) (*RequestLine, int, error) {
 	idx := bytes.Index(b, []byte(crlf))
 	if idx == -1 {
-		return nil, fmt.Errorf("could not find CRLF in request-line")
+		return nil, 0, nil
 	}
 	parts := bytes.Split(b, []byte(crlf))
+	requestLine, err := constructRequestLine(parts)
+	if err != nil {
+		return nil, 0, err
+	}
+	return requestLine, idx + 2, nil
+}
 
+func constructRequestLine(parts [][]byte) (*RequestLine, error) {
 	requestLineParts := bytes.Split(parts[0], []byte(" "))
 
 	if len(requestLineParts) != 3 {
