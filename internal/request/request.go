@@ -42,19 +42,39 @@ func parseRequestLine(b []byte) (RequestLine, error) {
 		return RequestLine{}, fmt.Errorf("malformed request line: %s", string(parts[0]))
 	}
 
+	requestMethod := string(requestLineParts[0])
 	var methodRe = regexp.MustCompile(`^[A-Z]+$`)
-	if !methodRe.MatchString(string(requestLineParts[0])) {
-		return RequestLine{}, fmt.Errorf("request method is not valid: %s", string(requestLineParts[0]))
+	if !methodRe.MatchString(requestMethod) || !isValidMethod(requestMethod) {
+		return RequestLine{}, fmt.Errorf("request method is not valid: %s", requestMethod)
 	}
+
 	httpVersion := string(bytes.Split(requestLineParts[2], []byte("/"))[1])
 	if httpVersion != "1.1" {
 		return RequestLine{}, fmt.Errorf("unsupported http version used, this service only supports http 1.1")
 	}
 
+	requestTarget := string(requestLineParts[1])
+
 	requestLine := RequestLine{
 		HttpVersion:   httpVersion,
-		RequestTarget: string(requestLineParts[1]),
-		Method:        string(requestLineParts[0]),
+		RequestTarget: requestTarget,
+		Method:        requestMethod,
 	}
 	return requestLine, nil
+}
+
+func isValidMethod(requestMethod string) bool {
+	var allowedMethods = map[string]struct{}{
+		"GET":     {},
+		"HEAD":    {},
+		"POST":    {},
+		"PUT":     {},
+		"DELETE":  {},
+		"CONNECT": {},
+		"OPTIONS": {},
+		"TRACE":   {},
+		"PATCH":   {},
+	}
+	_, ok := allowedMethods[requestMethod]
+	return ok
 }
