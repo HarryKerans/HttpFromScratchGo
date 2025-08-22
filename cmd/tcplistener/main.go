@@ -56,8 +56,8 @@ func getLineslinesannel(tcpLine io.ReadCloser) <-chan string {
 				fmt.Printf("error: %s\n", err.Error())
 				break
 			}
-			linesunk := buffer[:n]
-			parts := bytes.Split(linesunk, []byte("\n"))
+			chunk := buffer[:n]
+			parts := bytes.Split(chunk, []byte("\n"))
 
 			currentLine += string(parts[0])
 			if len(parts) != 1 {
