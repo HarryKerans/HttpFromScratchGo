@@ -17,6 +17,8 @@ type RequestLine struct {
 	Method        string
 }
 
+const crlf = "\r\n"
+
 func RequestFromReader(reader io.Reader) (*Request, error) {
 	b, err := io.ReadAll(reader)
 	if err != nil {
@@ -27,35 +29,42 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 		return &Request{}, err
 	}
 	request := &Request{
-		RequestLine: requestLine,
+		RequestLine: *requestLine,
 	}
 	return request, nil
-
 }
 
-func parseRequestLine(b []byte) (RequestLine, error) {
-	parts := bytes.Split(b, []byte("\r\n"))
+func parseRequestLine(b []byte) (*RequestLine, error) {
+	idx := bytes.Index(b, []byte(crlf))
+	if idx == -1 {
+		return nil, fmt.Errorf("could not find CRLF in request-line")
+	}
+	parts := bytes.Split(b, []byte(crlf))
 
 	requestLineParts := bytes.Split(parts[0], []byte(" "))
 
 	if len(requestLineParts) != 3 {
-		return RequestLine{}, fmt.Errorf("malformed request line: %s", string(parts[0]))
+		return nil, fmt.Errorf("malformed request line: %s", string(parts[0]))
 	}
 
 	requestMethod := string(requestLineParts[0])
 	var methodRe = regexp.MustCompile(`^[A-Z]+$`)
 	if !methodRe.MatchString(requestMethod) || !isValidMethod(requestMethod) {
-		return RequestLine{}, fmt.Errorf("request method is not valid: %s", requestMethod)
+		return nil, fmt.Errorf("request method is not valid: %s", requestMethod)
 	}
-
-	httpVersion := string(bytes.Split(requestLineParts[2], []byte("/"))[1])
+	httpVersionAndProtocol := bytes.Split(requestLineParts[2], []byte("/"))
+	httpProtocol := string(httpVersionAndProtocol[0])
+	httpVersion := string(httpVersionAndProtocol[1])
+	if httpProtocol != "HTTP" {
+		return nil, fmt.Errorf("unsupported protocol, this service is designed for HTTP")
+	}
 	if httpVersion != "1.1" {
-		return RequestLine{}, fmt.Errorf("unsupported http version used, this service only supports http 1.1")
+		return nil, fmt.Errorf("unsupported http version used, this service only supports http 1.1")
 	}
 
 	requestTarget := string(requestLineParts[1])
 
-	requestLine := RequestLine{
+	requestLine := &RequestLine{
 		HttpVersion:   httpVersion,
 		RequestTarget: requestTarget,
 		Method:        requestMethod,
