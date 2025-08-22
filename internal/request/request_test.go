@@ -40,4 +40,8 @@ func TestRequestLineParse(t *testing.T) {
 	// Test: Invalid method
 	_, err = RequestFromReader(strings.NewReader("POSTYY /coffee HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n"))
 	require.Error(t, err)
+
+	// Test: Invalid version
+	_, err = RequestFromReader(strings.NewReader("POST /coffee HTTP/2\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n"))
+	require.Error(t, err)
 }
