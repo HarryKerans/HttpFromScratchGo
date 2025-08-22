@@ -1,10 +1,8 @@
 package main
 
 import (
-	"bytes"
-	"errors"
 	"fmt"
-	"io"
+	"httpfromtcp/internal/request"
 	"log"
 	"net"
 )
@@ -24,47 +22,15 @@ func main() {
 			log.Fatal(err)
 		}
 		go func(c net.Conn) {
-			linesChan := getLineslinesannel(c)
-			for line := range linesChan {
-				fmt.Println(line)
+			request, err := request.RequestFromReader(c)
+			if err != nil {
+				log.Fatalf("error parsing request: %s\n", err.Error())
 			}
+			fmt.Printf("Request line:\n- Method: %s\n- Target: %s\n- Version: %s\n", request.RequestLine.Method, request.RequestLine.RequestTarget, request.RequestLine.HttpVersion)
 			c.Close()
 			fmt.Println("Connection to", conn.RemoteAddr(), "Closed!")
 		}(conn)
 
 	}
 
-}
-
-func getLineslinesannel(tcpLine io.ReadCloser) <-chan string {
-	lines := make(chan string)
-	go func() {
-		defer tcpLine.Close()
-		defer close(lines)
-		currentLine := ""
-		for {
-			buffer := make([]byte, 8)
-			n, err := tcpLine.Read(buffer)
-			if err != nil {
-				if errors.Is(err, io.EOF) {
-					if currentLine != "" {
-						lines <- currentLine
-						currentLine = ""
-					}
-					break
-				}
-				fmt.Printf("error: %s\n", err.Error())
-				break
-			}
-			chunk := buffer[:n]
-			parts := bytes.Split(chunk, []byte("\n"))
-
-			currentLine += string(parts[0])
-			if len(parts) != 1 {
-				lines <- currentLine
-				currentLine = string(parts[len(parts)-1])
-			}
-		}
-	}()
-	return lines
 }
