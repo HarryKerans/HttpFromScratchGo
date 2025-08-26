@@ -31,8 +31,12 @@ func (h Headers) Parse(data []byte) (n int, done bool, err error) {
 	if err != nil {
 		return 0, false, err
 	}
-
-	h.Set(headerFieldName, headerFieldValue)
+	value, ok := h[headerFieldName]
+	if ok {
+		h.Set(headerFieldName, value+", "+headerFieldValue)
+	} else {
+		h.Set(headerFieldName, headerFieldValue)
+	}
 	return idx + 2, false, nil
 }
 

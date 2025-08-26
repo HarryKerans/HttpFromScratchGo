@@ -36,14 +36,14 @@ func TestHeaderParse(t *testing.T) {
 	assert.Equal(t, 57, n)
 	assert.False(t, done)
 
-	// Test: Valid 2 headers with existing headers
+	// Test: Valid 2 headers with existing header
 	headers = map[string]string{"host": "localhost:42069"}
 	data = []byte("User-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n")
 	n, done, err = headers.Parse(data)
 	require.NoError(t, err)
 	require.NotNil(t, headers)
 	assert.Equal(t, "localhost:42069", headers["host"])
-	assert.Equal(t, "curl/7.81.0", headers["User-Agent"])
+	assert.Equal(t, "curl/7.81.0", headers["user-agent"])
 	assert.Equal(t, 25, n)
 	assert.False(t, done)
 
@@ -82,6 +82,16 @@ func TestHeaderParse(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, headers)
 	assert.Equal(t, "localhost:42069", headers["!host#"])
+	assert.Equal(t, 25, n)
+	assert.False(t, done)
+
+	// Test: Valid 2 headers with existing identical header
+	headers = map[string]string{"host": "localhost:42069"}
+	data = []byte("Host: localhost:80085\r\n\r\n")
+	n, done, err = headers.Parse(data)
+	require.NoError(t, err)
+	require.NotNil(t, headers)
+	assert.Equal(t, "localhost:42069, localhost:80085", headers["host"])
 	assert.Equal(t, 23, n)
 	assert.False(t, done)
 }
