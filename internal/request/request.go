@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"httpfromtcp/internal/headers"
 	"io"
 	"regexp"
 )
 
 type Request struct {
 	RequestLine RequestLine
+	Headers     headers.Headers
 
 	state requestState
 }
@@ -24,6 +26,7 @@ type requestState int
 
 const (
 	requestStateInitialised requestState = iota
+	requestStateParsingHeaders
 	requestStateDone
 )
 
@@ -77,8 +80,10 @@ func (r *Request) parse(data []byte) (int, error) {
 			return 0, nil
 		}
 		r.RequestLine = *requestLine
-		r.state = requestStateDone
+		r.state = requestStateParsingHeaders
 		return n, nil
+	case requestStateParsingHeaders:
+		requestHeader := parseRequestHeaders(data)
 	case requestStateDone:
 		return 0, fmt.Errorf("error: trying to read data in a done state")
 	default:
@@ -97,6 +102,10 @@ func parseRequestLine(b []byte) (*RequestLine, int, error) {
 		return nil, 0, err
 	}
 	return requestLine, idx + 2, nil
+}
+
+func parseRequestHeaders(b []byte) (*headers.Headers, int, error) {
+
 }
 
 func constructRequestLine(parts [][]byte) (*RequestLine, error) {
