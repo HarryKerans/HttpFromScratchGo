@@ -17,6 +17,11 @@ func (h Headers) Set(key, value string) {
 	h[key] = value
 }
 
+func (h Headers) Get(key string) (string, bool) {
+	v, ok := h[strings.ToLower(key)]
+	return v, ok
+}
+
 const crlf = "\r\n"
 
 func (h Headers) Parse(data []byte) (n int, done bool, err error) {

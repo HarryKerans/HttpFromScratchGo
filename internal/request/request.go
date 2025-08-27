@@ -7,13 +7,14 @@ import (
 	"httpfromtcp/internal/headers"
 	"io"
 	"regexp"
+	"strconv"
 )
 
 type Request struct {
 	RequestLine RequestLine
 	Headers     headers.Headers
-
-	state requestState
+	Body        []byte
+	state       requestState
 }
 
 type RequestLine struct {
@@ -27,6 +28,7 @@ type requestState int
 const (
 	requestStateInitialised requestState = iota
 	requestStateParsingHeaders
+	requestStateParsingBody
 	requestStateDone
 )
 
@@ -39,6 +41,7 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 	req := &Request{
 		state:   requestStateInitialised,
 		Headers: headers.NewHeaders(),
+		Body:    make([]byte, 0),
 	}
 	for req.state != requestStateDone {
 		if readToIndex >= len(buf) {
@@ -105,9 +108,27 @@ func (r *Request) parseSingle(b []byte) (int, error) {
 			return 0, err
 		}
 		if done {
-			r.state = requestStateDone
+			r.state = requestStateParsingBody
 		}
 		return n, nil
+	case requestStateParsingBody:
+		contentLengthStr, ok := r.Headers.Get("content-length")
+		if !ok {
+			r.state = requestStateDone
+			return len(b), nil
+		}
+		contentLen, err := strconv.Atoi(contentLengthStr)
+		if err != nil {
+			return 0, fmt.Errorf("Malformed content-length: %s", err)
+		}
+		r.Body = append(r.Body, b...)
+		if len(r.Body) > contentLen {
+			return 0, fmt.Errorf("body length exceeds stated content-length")
+		}
+		if len(r.Body) == contentLen {
+			r.state = requestStateDone
+		}
+		return len(b), nil
 	case requestStateDone:
 		return 0, fmt.Errorf("error: trying to read data in a done state")
 	default:
