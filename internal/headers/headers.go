@@ -43,13 +43,6 @@ func (h Headers) Parse(data []byte) (n int, done bool, err error) {
 func retrieveHeaderParts(data []byte, idx int, char byte) (headerFieldName, headerFieldValue string, err error) {
 	parts := bytes.SplitN(data[:idx], []byte(":"), 2)
 
-	method := parts[0]
-	for _, c := range method {
-		if (c < 'A' || c > 'Z') && (c < 'a' || c > 'z') && (c < 0 || c > 9) && (strings.IndexByte("!#$%&'*+-.^_`|~", c) == -1) && (c != ' ') {
-			return "", "", fmt.Errorf("invalid characters in header field-name")
-		}
-	}
-
 	headerFieldName = strings.ToLower(string(parts[0]))
 	headerFieldValue = string(parts[1])
 
@@ -59,6 +52,12 @@ func retrieveHeaderParts(data []byte, idx int, char byte) (headerFieldName, head
 
 	headerFieldName = strings.Trim(headerFieldName, " ")
 	headerFieldValue = strings.Trim(headerFieldValue, " ")
+
+	for _, c := range headerFieldName {
+		if (c < 'A' || c > 'Z') && (c < 'a' || c > 'z') && (c < 0 || c > 9) && (!strings.ContainsRune("!#$%&'*+-.^_`|~", c)) {
+			return "", "", fmt.Errorf("invalid characters in header field-name")
+		}
+	}
 
 	return headerFieldName, headerFieldValue, nil
 }
