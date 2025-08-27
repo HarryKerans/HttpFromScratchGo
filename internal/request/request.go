@@ -37,7 +37,8 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 	buf := make([]byte, bufferSize)
 	readToIndex := 0
 	req := &Request{
-		state: requestStateInitialised,
+		state:   requestStateInitialised,
+		Headers: headers.NewHeaders(),
 	}
 	for req.state != requestStateDone {
 		if readToIndex >= len(buf) {
@@ -49,7 +50,7 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				if req.state != requestStateDone {
-					return nil, fmt.Errorf("incomplete request")
+					return nil, fmt.Errorf("incomplete request, in state: %d, read n bytes on EOF: %d", req.state, numBytesRead)
 				}
 				break
 			}
@@ -70,9 +71,25 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 }
 
 func (r *Request) parse(data []byte) (int, error) {
+
+	totalBytesParsed := 0
+	for r.state != requestStateDone {
+		n, err := r.parseSingle(data[totalBytesParsed:])
+		if err != nil {
+			return 0, err
+		}
+		if n == 0 {
+			break
+		}
+		totalBytesParsed += n
+	}
+	return totalBytesParsed, nil
+}
+
+func (r *Request) parseSingle(b []byte) (int, error) {
 	switch r.state {
 	case requestStateInitialised:
-		requestLine, n, err := parseRequestLine(data)
+		requestLine, n, err := parseRequestLine(b)
 		if err != nil {
 			return 0, err
 		}
@@ -83,7 +100,14 @@ func (r *Request) parse(data []byte) (int, error) {
 		r.state = requestStateParsingHeaders
 		return n, nil
 	case requestStateParsingHeaders:
-		requestHeader := parseRequestHeaders(data)
+		n, done, err := r.Headers.Parse(b)
+		if err != nil {
+			return 0, err
+		}
+		if done {
+			r.state = requestStateDone
+		}
+		return n, nil
 	case requestStateDone:
 		return 0, fmt.Errorf("error: trying to read data in a done state")
 	default:
@@ -102,10 +126,6 @@ func parseRequestLine(b []byte) (*RequestLine, int, error) {
 		return nil, 0, err
 	}
 	return requestLine, idx + 2, nil
-}
-
-func parseRequestHeaders(b []byte) (*headers.Headers, int, error) {
-
 }
 
 func constructRequestLine(parts [][]byte) (*RequestLine, error) {
