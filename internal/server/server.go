@@ -49,6 +49,12 @@ func (s *Server) listen() {
 }
 
 func (s *Server) handle(conn net.Conn) {
-	fmt.Print("HTTP/1.1 200 OK\nContent-Type: text/plain\nContent-Length: 13\nHello World!")
-	conn.Close()
+	defer conn.Close()
+	response := "HTTP/1.1 200 OK\r\n" + // Status line
+		"Content-Type: text/plain\r\n" + // Example header
+		"Content-Length: 13\r\n" + // Content length header
+		"\r\n" + // Blank line to separate headers from the body
+		"Hello World!\n" // Body
+	conn.Write([]byte(response))
+	return
 }
