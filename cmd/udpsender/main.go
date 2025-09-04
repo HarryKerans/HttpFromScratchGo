@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"log"
 	"net"
 	"os"
 )
@@ -14,12 +13,12 @@ func main() {
 	fmt.Println("Program Start")
 	addr, err := net.ResolveUDPAddr("udp", host)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Print(err)
 	}
 
 	conn, connerr := net.DialUDP("udp", nil, addr)
 	if connerr != nil {
-		log.Fatal(connerr)
+		fmt.Print(connerr)
 	}
 	defer conn.Close()
 
@@ -28,11 +27,11 @@ func main() {
 		fmt.Println(">")
 		line, readErr := reader.ReadBytes('\n')
 		if readErr != nil {
-			log.Fatal(readErr)
+			fmt.Print(readErr)
 		}
 		_, writeErr := conn.Write(line)
 		if writeErr != nil {
-			log.Fatal(writeErr)
+			fmt.Print(writeErr)
 		}
 
 	}

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"httpfromtcp/internal/server"
 	"log"
 	"os"
@@ -16,10 +17,10 @@ func main() {
 		log.Fatalf("Error starting server: %v", err)
 	}
 	defer server.Close()
-	log.Println("Server started on port", port)
+	fmt.Println("Server started on port", port)
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 	<-sigChan
-	log.Println("Server gracefully stopped")
+	fmt.Println("Server gracefully stopped")
 }
