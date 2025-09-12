@@ -60,7 +60,7 @@ func handlerVideo(w *response.Writer, req *request.Request) {
 	w.WriteStatusLine(response.StatusCodeSuccess)
 	body, err := os.ReadFile("./assets/vim.mp4")
 	if err != nil {
-		fmt.Errorf("error whilst reading vim vide")
+		fmt.Errorf("error whilst reading vim video, %s", err)
 	}
 	headers := response.GetDefaultHeaders(len(body))
 	headers.Override("Content-Type", "video/mp4")
@@ -116,7 +116,8 @@ func handlerHttpbin(w *response.Writer, req *request.Request) {
 	trailers.Set("X-Content-SHA256", hex.EncodeToString(bodyHash[:]))
 	err = w.WriteTrailers(trailers)
 	if err != nil {
-		fmt.Errorf("error whilst writing trailers to client, %s", err)
+		err = fmt.Errorf("error whilst writing trailers to client, %s", err)
+		log.Println(err)
 	}
 	return
 
