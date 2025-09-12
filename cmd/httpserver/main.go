@@ -53,7 +53,7 @@ func handler400(w *response.Writer, _ *request.Request) {
 </html>
 `)
 	headers := response.GetDefaultHeaders(len(body))
-	headers.Set("Content Type", "text/html")
+	headers.Override("Content-Type", "text/html")
 	w.WriteHeaders(headers)
 	w.WriteBody(body)
 	return
@@ -72,7 +72,7 @@ func handler500(w *response.Writer, _ *request.Request) {
 </html>
 `)
 	headers := response.GetDefaultHeaders(len(body))
-	headers.Set("Content Type", "text/html")
+	headers.Override("Content-Type", "text/html")
 	w.WriteHeaders(headers)
 	w.WriteBody(body)
 	return
@@ -91,7 +91,7 @@ func handler200(w *response.Writer, _ *request.Request) {
 </html>
 `)
 	headers := response.GetDefaultHeaders(len(body))
-	headers.Set("Content Type", "text/html")
+	headers.Override("Content-Type", "text/html")
 	w.WriteHeaders(headers)
 	w.WriteBody(body)
 	return
