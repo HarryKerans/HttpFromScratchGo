@@ -64,6 +64,7 @@ func handlerHttpbin(w *response.Writer, req *request.Request) {
 	w.WriteStatusLine(response.StatusCodeSuccess)
 	h := response.GetDefaultHeaders(0)
 	h.Remove("Content-Length")
+	h.Override("Transfer-Encoding", "chunked")
 	h.Set("Trailer", "X-Content-SHA256")
 	h.Set("Trailer", "X-Content-Length")
 	w.WriteHeaders(h)
