@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 	"httpfromtcp/internal/headers"
@@ -92,7 +93,7 @@ func handlerHttpbin(w *response.Writer, req *request.Request) {
 	if err != nil {
 		fmt.Println("Error writing chunked body done:", err)
 	}
-	//bodyHash := sha256.Sum256(totalBody)
+	bodyHash := sha256.Sum256(totalBody)
 	trailers := headers.NewHeaders()
 	trailers.Set("X-Content-Length", strconv.Itoa(len(totalBody)))
 	trailers.Set("X-Content-SHA256", hex.EncodeToString(bodyHash[:]))
