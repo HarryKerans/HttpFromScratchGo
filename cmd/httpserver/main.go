@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/hex"
 	"fmt"
+	"httpfromtcp/internal/headers"
 	"httpfromtcp/internal/request"
 	"httpfromtcp/internal/response"
 	"httpfromtcp/internal/server"
@@ -10,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 )
@@ -58,12 +61,14 @@ func handlerHttpbin(w *response.Writer, req *request.Request) {
 	defer resp.Body.Close()
 
 	w.WriteStatusLine(response.StatusCodeSuccess)
-	headers := response.GetDefaultHeaders(0)
-	headers.Remove("Content-Length")
-	headers.Set("Transfer-Encoding", "chunked")
-	w.WriteHeaders(headers)
+	h := response.GetDefaultHeaders(0)
+	h.Remove("Content-Length")
+	h.Set("Trailer", "X-Content-SHA256")
+	h.Set("Trailer", "X-Content-Length")
+	w.WriteHeaders(h)
 
 	buf := make([]byte, 1024)
+	totalBody := []byte("")
 	for {
 		n, err := resp.Body.Read(buf)
 		fmt.Println("Read", n, "bytes")
@@ -73,6 +78,7 @@ func handlerHttpbin(w *response.Writer, req *request.Request) {
 				fmt.Println("Error writing chunked body:", err)
 				break
 			}
+			totalBody = append(totalBody, buf[:n]...)
 		}
 		if err == io.EOF {
 			break // all data read
@@ -86,6 +92,16 @@ func handlerHttpbin(w *response.Writer, req *request.Request) {
 	if err != nil {
 		fmt.Println("Error writing chunked body done:", err)
 	}
+	//bodyHash := sha256.Sum256(totalBody)
+	trailers := headers.NewHeaders()
+	trailers.Set("X-Content-Length", strconv.Itoa(len(totalBody)))
+	trailers.Set("X-Content-SHA256", hex.EncodeToString(bodyHash[:]))
+	err = w.WriteTrailers(trailers)
+	if err != nil {
+		fmt.Errorf("error whilst writing trailers to client, %s", err)
+	}
+	return
+
 }
 
 func handler400(w *response.Writer, _ *request.Request) {
